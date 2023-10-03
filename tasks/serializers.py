@@ -9,9 +9,9 @@ class TaskCreateSerializer(serializers.Serializer):
 
 
 class TaskSerializer(serializers.ModelSerializer):
-    celery_id = serializers.CharField(read_only=True)
+    id = serializers.CharField(read_only=True)
     status = serializers.ChoiceField(choices=Task.STATUS_CHOICES, default='RUNNING', read_only=True)
 
     class Meta:
         model = Task
-        fields = ['id', 'celery_id', 'status']
+        fields = ['id', 'status']

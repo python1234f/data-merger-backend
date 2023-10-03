@@ -2,3 +2,35 @@ collected_static/*
 !collected_static/.gitkeep
 static/*
 !static/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+
+# Virtual Environment
+venv/
+env/
+*.pyc
+
+# Logs and databases
+*.log
+*.sqlite3
+db.sqlite3
+
+# PyCharm
+.idea/
+
+# Visual Studio Code
+.vscode/
+
+# Other
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.pyc
+*.egg-info/

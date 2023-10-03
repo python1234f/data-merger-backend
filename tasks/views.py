@@ -18,6 +18,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        print("\n\n\n\n1111111111111")
 
         id = serializer.validated_data.get('id')
 
@@ -25,11 +26,20 @@ class TaskViewSet(viewsets.ModelViewSet):
         if Task.objects.filter(id=id).exists():
             raise ValidationError({'id': ['A task with this ID already exists.']})
 
+
         task = long_running_task.delay(id)
 
         # Create the Task instance after the celery task is launched
         task_instance = Task.objects.create(id=id, celery_id=task.id)
 
-        # Return the task_instance using the serializer
-        serializer = self.get_serializer(task_instance)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        response_serializer = TaskSerializer(data={
+            "id": task_instance.id,
+            "status": task_instance.status
+        })
+
+        if not response_serializer.is_valid():
+            return Response(response_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        response_data = {"id": task_instance.id, **response_serializer.data}
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
