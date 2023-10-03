@@ -8,8 +8,8 @@ function App() {
   // const backendHost = process.env.REACT_APP_BACKEND_HOSTNAME;
   // const backendPort = process.env.REACT_APP_BACKEND_PORT;
 
-  const backendHost = "web";
-  const backendPort = "8000";
+  const backendHost = "localhost";
+  const backendPort = "8888";
 
   const wsUrl = `ws://${backendHost}:${backendPort}/tasks/`;
   const httpUrl = `http://${backendHost}:${backendPort}/api/task/`;
