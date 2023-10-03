@@ -18,7 +18,8 @@ Getting Started
     Make sure you have Docker and Docker Compose installed.
     Navigate to the project directory.
     Run docker-compose up to start the services.
-    Open a browser and navigate to the frontend service URL.
+    Open a browser and navigate to the frontend service URL, localhost:3000
+    You can add tasks (many if you want) and see the progress bars interacting
 
 License
 
