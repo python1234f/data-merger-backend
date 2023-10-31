@@ -1,0 +1,113 @@
+name: Deploy Django Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'tasks/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'manage.py'
+      - 'requirements.txt'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.10
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Run tests
+      run: python manage.py test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2  # adjust as per your region
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: your-ecr-repository-name
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    - name: Update ECS service
+      run: |
+        aws ecs update-service --cluster your-cluster-name --service your-service-name --force-new-deployment
+
+    - name: Backup database
+      run: |
+        # Your command to backup the database, e.g., for PostgreSQL:
+        # pg_dump dbname > dbname_backup.sql
+
+    - name: Apply Django migrations
+      run: |
+        # Ensure your environment variables for database access are set here if needed.
+        docker run $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG python manage.py migrate
+
+    - name: Restore database on failure
+      if: failure()  # Only if a previous step failed
+      run: |
+        # Your command to restore the database from the backup, e.g., for PostgreSQL:
+        # psql dbname < dbname_backup.sql
+
+    - name: Notify on Slack about rollback
+      if: failure()  # Send a notification only if there was a rollback
+      uses: rtCamp/action-slack-notify@v2.0.2
+      env:
+        SLACK_CHANNEL: your-slack-channel
+        SLACK_COLOR: '#FFA500' # orange for rollbacks
+        SLACK_ICON: https://github.com.png?size=48
+        SLACK_MESSAGE: 'Deployment rolled back due to issues! :warning:'
+        SLACK_TITLE: 'Rollback Notification'
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+    # Add an optional step for health check. This can be a curl command to your service's health endpoint.
+    - name: Health Check
+      run: |
+        for i in {1..5}; do # Try 5 times
+          curl -f http://your-service-url/health/ && break
+          echo "Retrying in 10 seconds..."
+          sleep 10
+        done
+
+    # Optional step for notifications, this is a simple example using Slack.
+    - name: Notify on Slack
+      if: failure() # Send a notification only if previous steps failed
+      uses: rtCamp/action-slack-notify@v2.0.2
+      env:
+        SLACK_CHANNEL: your-slack-channel
+        SLACK_COLOR: '#FF0000' # red for failures
+        SLACK_ICON: https://github.com.png?size=48
+        SLACK_MESSAGE: 'Deployment failed! :x:'
+        SLACK_TITLE: 'Deployment Notification'
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
